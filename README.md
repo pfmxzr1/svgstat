@@ -8,6 +8,10 @@ SVGStat is a developer-first SVG analytics platform built with Go for the places
 
 Instead of asking you to wire up tracking scripts, screenshots, or custom widgets, SVGStat turns metrics into live SVG endpoints. You ship a URL, embed it like an image, and instantly make your project look active, trusted, and alive.
 
+## Preview
+
+![SVGStat Dashboard Preview](./preview.png)
+
 ## Why SVGStat
 
 Most analytics products are built for websites you fully control.
