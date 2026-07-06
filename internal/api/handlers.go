@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
@@ -338,6 +340,15 @@ func (a *App) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"status":"ok"}`))
 }
 
+// setNoCacheHeaders defeats intermediary caches, in particular GitHub's Camo
+// image proxy (fronted by a CDN that keys off max-age/s-maxage and a past
+// Expires rather than no-cache/no-store alone).
+func setNoCacheHeaders(w http.ResponseWriter) {
+	w.Header().Set("Cache-Control", "no-cache, no-store, max-age=0, s-maxage=0, must-revalidate, proxy-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", time.Now().UTC().Add(-10*time.Minute).Format(http.TimeFormat))
+}
+
 func (a *App) handleCounterSVG(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	projectSlug := vars["projectSlug"]
@@ -369,11 +380,13 @@ func (a *App) handleCounterSVG(w http.ResponseWriter, r *http.Request) {
 
 	color := r.URL.Query().Get("color")
 	label := r.URL.Query().Get("label")
+	homepage := getSVGHomepage(r)
 
 	svg, err := a.renderer.RenderCounter(renderer.CounterData{
-		Value: value,
-		Label: label,
-		Color: color,
+		Value:       value,
+		Label:       label,
+		Color:       color,
+		HomepageURL: homepage,
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to render counter")
@@ -382,7 +395,7 @@ func (a *App) handleCounterSVG(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "image/svg+xml")
-	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	setNoCacheHeaders(w)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(svg))
 }
@@ -419,15 +432,17 @@ func (a *App) handleBadgeSVG(w http.ResponseWriter, r *http.Request) {
 	color := r.URL.Query().Get("color")
 	style := r.URL.Query().Get("style")
 	label := r.URL.Query().Get("label")
+	homepage := getSVGHomepage(r)
 	if label == "" {
 		label = name
 	}
 
 	svg, err := a.renderer.RenderBadge(renderer.BadgeData{
-		Label: label,
-		Value: fmt.Sprintf("%d", value),
-		Color: color,
-		Style: style,
+		Label:       label,
+		Value:       fmt.Sprintf("%d", value),
+		Color:       color,
+		Style:       style,
+		HomepageURL: homepage,
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to render badge")
@@ -436,7 +451,7 @@ func (a *App) handleBadgeSVG(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "image/svg+xml")
-	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	setNoCacheHeaders(w)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(svg))
 }
@@ -466,6 +481,27 @@ func (a *App) handleGetProjectStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.jsonSuccess(w, stats)
+}
+
+// getSVGHomepage decides the click-through target of the rendered SVG: an
+// explicit ?homepage= override, otherwise this service's own domain — the
+// request carries no Referer/Origin when GitHub's Camo proxy fetches it.
+func getSVGHomepage(r *http.Request) string {
+	homepage := strings.TrimSpace(r.URL.Query().Get("homepage"))
+	if homepage != "" {
+		return homepage
+	}
+
+	if r.Host == "" {
+		return ""
+	}
+	scheme := "https"
+	if proto := strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")); proto != "" {
+		scheme = proto
+	} else if r.TLS == nil {
+		scheme = "http"
+	}
+	return scheme + "://" + r.Host
 }
 
 func (a *App) handleGetProjectVisitors(w http.ResponseWriter, r *http.Request) {

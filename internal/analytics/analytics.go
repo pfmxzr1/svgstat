@@ -337,6 +337,16 @@ func (a *Analytics) extractRequestData(req *http.Request, projectID string) *Req
 		Path:      req.URL.Path,
 	}
 
+	// GitHub's Camo image proxy strips the Referer, so embeds there can name
+	// their source page explicitly, e.g. ?page_id=github.com/user/repo.
+	// Camo's own User-Agent is still recognizable, so at least attribute
+	// unlabelled fetches to github.com.
+	if pageID := strings.TrimSpace(req.URL.Query().Get("page_id")); pageID != "" {
+		data.Referrer = pageID
+	} else if data.Referrer == "" && strings.Contains(strings.ToLower(data.UserAgent), "github-camo") {
+		data.Referrer = "github.com"
+	}
+
 	data.IsBot = a.isBot(data.UserAgent)
 	data.DeviceType = a.detectDeviceType(data.UserAgent)
 	data.Browser = a.detectBrowser(data.UserAgent)

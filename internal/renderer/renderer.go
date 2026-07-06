@@ -3,6 +3,8 @@ package renderer
 import (
 	"fmt"
 	"html/template"
+	"math"
+	"net/url"
 	"strings"
 )
 
@@ -11,17 +13,37 @@ type Renderer struct {
 }
 
 type CounterData struct {
-	Value  int64
-	Label  string
-	Theme  string
-	Color  string
+	Value       int64
+	Label       string
+	Theme       string
+	Color       string
+	HomepageURL string
 }
 
 type BadgeData struct {
-	Label  string
-	Value  string
-	Color  string
-	Style  string
+	Label       string
+	Value       string
+	Color       string
+	Style       string
+	HomepageURL string
+}
+
+// shieldLayout is the computed geometry handed to the SVG template. Text
+// coordinates (LabelX, ValueX, *Len) live in the scale(0.1) space the
+// template renders text in, i.e. 10x the pixel values.
+type shieldLayout struct {
+	Label       string
+	Value       string
+	Color       string
+	HomepageURL string
+	Gradient    bool
+	Width       float64
+	LabelWidth  float64
+	ValueWidth  float64
+	LabelX      float64
+	ValueX      float64
+	LabelLen    float64
+	ValueLen    float64
 }
 
 func New() *Renderer {
@@ -32,96 +54,118 @@ func New() *Renderer {
 
 func loadTemplates() *template.Template {
 	tmpl := template.New("svg")
-
-	tmpl = template.Must(tmpl.New("counter").Parse(counterTemplate))
-	tmpl = template.Must(tmpl.New("badge").Parse(badgeTemplate))
-	tmpl = template.Must(tmpl.New("badge_flat").Parse(badgeFlatTemplate))
-
+	tmpl = template.Must(tmpl.New("shield").Parse(shieldTemplate))
 	return tmpl
 }
 
 func (r *Renderer) RenderCounter(data CounterData) (string, error) {
-	if data.Theme == "" {
-		data.Theme = "default"
-	}
 	if data.Color == "" {
 		data.Color = "#007bff"
 	}
 
-	var buf strings.Builder
-	err := r.templates.ExecuteTemplate(&buf, "counter", data)
-	if err != nil {
-		return "", fmt.Errorf("failed to render counter: %w", err)
-	}
-
-	return buf.String(), nil
+	return r.renderShield(shieldLayout{
+		Label:       data.Label,
+		Value:       fmt.Sprintf("%d", data.Value),
+		Color:       data.Color,
+		Gradient:    data.Theme != "flat",
+		HomepageURL: prepareHomepage(data.HomepageURL),
+	})
 }
 
 func (r *Renderer) RenderBadge(data BadgeData) (string, error) {
 	if data.Color == "" {
 		data.Color = "#007bff"
 	}
-	if data.Style == "" {
-		data.Style = "default"
-	}
 
-	templateName := "badge"
-	if data.Style == "flat" {
-		templateName = "badge_flat"
+	return r.renderShield(shieldLayout{
+		Label:       data.Label,
+		Value:       data.Value,
+		Color:       data.Color,
+		Gradient:    data.Style != "flat",
+		HomepageURL: prepareHomepage(data.HomepageURL),
+	})
+}
+
+const textPadding = 10 // horizontal padding around each text section, px
+
+func (r *Renderer) renderShield(layout shieldLayout) (string, error) {
+	if layout.Label != "" {
+		layout.LabelWidth = round1(textWidth(layout.Label) + textPadding)
 	}
+	layout.ValueWidth = round1(textWidth(layout.Value) + textPadding)
+	layout.Width = round1(layout.LabelWidth + layout.ValueWidth)
+	layout.LabelX = round1(layout.LabelWidth / 2 * 10)
+	layout.ValueX = round1((layout.LabelWidth + layout.ValueWidth/2) * 10)
+	layout.LabelLen = round1((layout.LabelWidth - textPadding) * 10)
+	layout.ValueLen = round1((layout.ValueWidth - textPadding) * 10)
 
 	var buf strings.Builder
-	err := r.templates.ExecuteTemplate(&buf, templateName, data)
-	if err != nil {
-		return "", fmt.Errorf("failed to render badge: %w", err)
+	if err := r.templates.ExecuteTemplate(&buf, "shield", layout); err != nil {
+		return "", fmt.Errorf("failed to render shield: %w", err)
 	}
-
 	return buf.String(), nil
 }
 
-const counterTemplate = `
-<svg xmlns="http://www.w3.org/2000/svg" width="120" height="40" viewBox="0 0 120 40">
-  <style>
-    .background { fill: #f8f9fa; }
-    .text { font-family: 'Arial', sans-serif; font-size: 20px; font-weight: bold; }
-    .label { font-size: 14px; fill: #6c757d; }
-    .value { fill: {{.Color}}; }
-  </style>
-  <rect class="background" width="120" height="40" rx="8" ry="8"/>
-  {{if .Label}}
-  <text class="text label" x="10" y="17">{{.Label}}</text>
-  <text class="text value" x="10" y="36">{{.Value}}</text>
-  {{else}}
-  <text class="text value" x="60" y="27" text-anchor="middle">{{.Value}}</text>
-  {{end}}
-</svg>
-`
+// textWidth approximates the rendered width of s in 11px Verdana/DejaVu Sans,
+// the font stack the shield template uses. textLength/lengthAdjust in the
+// template absorbs the remaining estimation error.
+func textWidth(s string) float64 {
+	var w float64
+	for _, r := range s {
+		w += charWidth(r)
+	}
+	return w
+}
 
-const badgeTemplate = `
-<svg xmlns="http://www.w3.org/2000/svg" width="140" height="28" viewBox="0 0 140 28">
-  <style>
-    .label-bg { fill: #555; }
-    .value-bg { fill: {{.Color}}; }
-    .text { font-family: 'Arial', sans-serif; font-size: 12px; font-weight: bold; fill: white; }
-  </style>
-  <rect class="label-bg" width="60" height="28"/>
-  <rect class="value-bg" x="60" width="80" height="28"/>
-  <rect x="58" width="4" height="28" fill="{{.Color}}"/>
-  <text class="text" x="30" y="18" text-anchor="middle">{{.Label}}</text>
-  <text class="text" x="100" y="18" text-anchor="middle">{{.Value}}</text>
-</svg>
-`
+func charWidth(r rune) float64 {
+	switch {
+	case r >= '0' && r <= '9':
+		return 7.0
+	case strings.ContainsRune("ijl.,:;!|'", r):
+		return 3.7
+	case strings.ContainsRune("frtI()[]- ", r):
+		return 4.6
+	case strings.ContainsRune("mwMW@", r):
+		return 10.5
+	case r >= 'A' && r <= 'Z':
+		return 8.0
+	case r > 127: // CJK and other wide glyphs
+		return 11.0
+	default:
+		return 6.6
+	}
+}
 
-const badgeFlatTemplate = `
-<svg xmlns="http://www.w3.org/2000/svg" width="140" height="28" viewBox="0 0 140 28">
-  <style>
-    .label-bg { fill: #555; }
-    .value-bg { fill: {{.Color}}; }
-    .text { font-family: 'Arial', sans-serif; font-size: 12px; font-weight: normal; fill: white; }
-  </style>
-  <rect class="label-bg" width="60" height="28"/>
-  <rect class="value-bg" x="60" width="80" height="28"/>
-  <text class="text" x="30" y="18" text-anchor="middle">{{.Label}}</text>
-  <text class="text" x="100" y="18" text-anchor="middle">{{.Value}}</text>
-</svg>
-`
+func round1(f float64) float64 {
+	return math.Round(f*10) / 10
+}
+
+func prepareHomepage(raw string) string {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return ""
+	}
+
+	parsed, err := url.Parse(value)
+	if err != nil || parsed.Host == "" {
+		if !strings.Contains(value, "://") {
+			parsed, err = url.Parse("https://" + value)
+		}
+	}
+	if err != nil || parsed.Host == "" {
+		return ""
+	}
+
+	scheme := parsed.Scheme
+	if scheme == "" {
+		scheme = "https"
+	}
+
+	return (&url.URL{
+		Scheme: scheme,
+		Host:   parsed.Host,
+		Path:   "/",
+	}).String()
+}
+
+const shieldTemplate = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="{{.Width}}" height="20">{{if .Gradient}}<linearGradient id="smooth" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient>{{end}}<clipPath id="round"><rect fill="#fff" height="20" rx="3" width="{{.Width}}"/></clipPath><g clip-path="url(#round)">{{if .Label}}<rect fill="#595959" height="20" width="{{.LabelWidth}}"/>{{end}}<rect fill="{{.Color}}" height="20" width="{{.ValueWidth}}" x="{{.LabelWidth}}"/>{{if .Gradient}}<rect fill="url(#smooth)" height="20" width="{{.Width}}"/>{{end}}</g><g fill="#fff" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="110" text-anchor="middle">{{if .Label}}<text fill="#010101" fill-opacity=".3" lengthAdjust="spacing" textLength="{{.LabelLen}}" transform="scale(0.1)" x="{{.LabelX}}" y="150">{{.Label}}</text><text lengthAdjust="spacing" textLength="{{.LabelLen}}" transform="scale(0.1)" x="{{.LabelX}}" y="140">{{.Label}}</text>{{end}}<text fill="#010101" fill-opacity=".3" lengthAdjust="spacing" textLength="{{.ValueLen}}" transform="scale(0.1)" x="{{.ValueX}}" y="150">{{.Value}}</text><text lengthAdjust="spacing" textLength="{{.ValueLen}}" transform="scale(0.1)" x="{{.ValueX}}" y="140">{{.Value}}</text>{{if .HomepageURL}}{{if .Label}}<a href="{{.HomepageURL}}" xlink:href="{{.HomepageURL}}"><rect fill="rgba(0,0,0,0)" height="20" width="{{.LabelWidth}}"/></a>{{end}}<a href="{{.HomepageURL}}" xlink:href="{{.HomepageURL}}"><rect fill="rgba(0,0,0,0)" height="20" width="{{.ValueWidth}}" x="{{.LabelWidth}}"/></a>{{end}}</g></svg>`

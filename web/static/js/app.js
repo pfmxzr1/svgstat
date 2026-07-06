@@ -67,7 +67,8 @@ function spaApp() {
             badgeName: 'downloads',
             badgeLabel: 'Downloads',
             badgeColor: '',
-            badgeStyle: ''
+            badgeStyle: '',
+            homepageUrl: ''
         },
         newProject: {
             name: '',
@@ -350,7 +351,8 @@ function spaApp() {
                 badgeName: 'downloads',
                 badgeLabel: this.lang === 'zh' ? '下载量' : 'Downloads',
                 badgeColor: '',
-                badgeStyle: ''
+                badgeStyle: '',
+                homepageUrl: ''
             };
         },
 
@@ -383,7 +385,8 @@ function spaApp() {
             const name = this.codeSettings.counterName || 'visits';
             const query = this.getQueryString({
                 label: this.codeSettings.counterLabel,
-                color: this.codeSettings.counterColor
+                color: this.codeSettings.counterColor,
+                homepage: this.getHomepageLink()
             });
             return `/svg/${project.slug}/counter/${name}.svg${query}`;
         },
@@ -394,7 +397,8 @@ function spaApp() {
             const query = this.getQueryString({
                 label: this.codeSettings.badgeLabel,
                 color: this.codeSettings.badgeColor,
-                style: this.codeSettings.badgeStyle
+                style: this.codeSettings.badgeStyle,
+                homepage: this.getHomepageLink()
             });
             return `/svg/${project.slug}/badge/${name}.svg${query}`;
         },
@@ -410,13 +414,29 @@ function spaApp() {
         getCounterMarkdown(project = this.selectedProject) {
             const label = this.codeSettings.counterLabel || this.codeSettings.counterName || 'Visits';
             const url = this.getCounterSvgUrl(project);
-            return url ? `![${label}](${url})` : '';
+            const homepage = this.getHomepageLink();
+            if (!url) return '';
+            return homepage ? `[![${label}](${url})](${homepage})` : `![${label}](${url})`;
         },
 
         getBadgeMarkdown(project = this.selectedProject) {
             const label = this.codeSettings.badgeLabel || this.codeSettings.badgeName || 'Downloads';
             const url = this.getBadgeSvgUrl(project);
-            return url ? `![${label}](${url})` : '';
+            const homepage = this.getHomepageLink();
+            if (!url) return '';
+            return homepage ? `[![${label}](${url})](${homepage})` : `![${label}](${url})`;
+        },
+
+        getHomepageLink() {
+            const value = String(this.codeSettings.homepageUrl || '').trim();
+            if (!value) return '';
+            try {
+                const normalized = value.includes('://') ? value : `https://${value}`;
+                const target = new URL(normalized);
+                return `${target.protocol}//${target.host}/`;
+            } catch (e) {
+                return '';
+            }
         },
 
         getPublicBaseUrl() {
