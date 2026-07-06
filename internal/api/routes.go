@@ -30,6 +30,7 @@ func (a *App) SetupRoutes() *mux.Router {
 	projects.HandleFunc("/{id}", a.handleUpdateProject).Methods("PUT")
 	projects.HandleFunc("/{id}", a.handleDeleteProject).Methods("DELETE")
 	projects.HandleFunc("/{id}/stats", a.handleGetProjectStats).Methods("GET")
+	projects.HandleFunc("/{id}/visitors", a.handleGetProjectVisitors).Methods("GET")
 
 	r.HandleFunc("/svg/{projectSlug}/counter/{name}.svg", a.handleCounterSVG).Methods("GET")
 	r.HandleFunc("/svg/{projectSlug}/badge/{name}.svg", a.handleBadgeSVG).Methods("GET")

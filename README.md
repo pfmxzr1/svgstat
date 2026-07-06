@@ -1,408 +1,293 @@
 # SVGStat
 
-> Developer-first SVG Analytics Platform.
+> Make analytics as easy to embed as an image.
 
-SVGStat is a high-performance analytics platform built around **dynamic SVG rendering**.
+[中文说明](./README.zh-CN.md)
 
-It enables developers to embed real-time counters, badges, widgets, charts and analytics into GitHub README files, Markdown documents and static websites—without requiring JavaScript.
+SVGStat is a developer-first SVG analytics platform built with Go.
 
----
+It helps you publish live counters, dynamic badges, and actionable traffic insights through plain SVG endpoints, so your GitHub README, documentation, landing pages, and dashboards can display real activity without injecting JavaScript.
 
-## Why SVGStat?
+## Why SVGStat
 
-Most analytics solutions are designed for websites.
+Most analytics tools are designed for websites.
 
-SVGStat is designed for developers.
+SVGStat is designed for places where developers actually present work:
 
-Instead of injecting JavaScript, SVGStat delivers analytics through SVG images that can be embedded almost anywhere.
+- GitHub README files
+- Markdown documents
+- Documentation portals
+- Static websites
+- Open source project pages
+- Internal engineering dashboards
 
-Supported scenarios include:
+Instead of shipping a tracking script, SVGStat turns analytics into embeddable image URLs. That makes it lightweight, cache-friendly, fast to distribute, and easy to integrate anywhere an `<img>` tag or Markdown image is supported.
 
-* GitHub README
-* Markdown
-* Documentation
-* Static websites
-* Developer dashboards
-* Open source projects
+## What You Get
 
-SVGStat focuses on making analytics lightweight, fast and developer-friendly.
+### Live SVG Counters
 
----
+Expose real-time metrics as SVG counters.
 
-# Features
+Typical use cases:
 
-## Dynamic SVG Counter
+- Visitors
+- Downloads
+- Stars
+- Followers
+- Custom project metrics
 
-Display real-time counters.
+### Dynamic SVG Badges
 
-Examples:
+Generate production-ready badges with configurable labels, colors, and styles.
 
-* Visitors
-* Downloads
-* Stars
-* Followers
-* Custom counters
+Typical use cases:
 
----
+- Downloads
+- Version visibility
+- Project status
+- Adoption signals
+- Custom KPIs
 
-## README Analytics
+### Developer Analytics Dashboard
 
-Track README traffic without JavaScript.
+View project traffic and usage signals from a focused SPA dashboard.
 
-Metrics include:
+Current dashboard coverage includes:
 
-* Page Views
-* Unique Visitors
-* Referrer
-* Country
-* Device
-* Browser
+- Page views
+- Unique visitors
+- Referrers
+- Countries
+- Devices
+- Browsers
+- Recent visitor details
 
----
+### Project Workspace
 
-## SVG Badge
+Manage multiple projects from one interface and generate embed code for counters and badges with live preview.
 
-Generate dynamic badges.
+## Live Demo
 
-Examples:
+- Product site: [https://svgstat.com](https://svgstat.com)
+- Demo project name: `demo`
+- Counter endpoint: `https://svgstat.com/svg/demo/counter/visits.svg?label=Visits&color=7c3aed`
+- Badge endpoint: `https://svgstat.com/svg/demo/badge/downloads.svg?label=Downloads&color=0ea5e9&style=flat-square`
+- Markdown embed:
 
-* Visitors
-* Downloads
-* Version
-* Build Status
-* Custom Metrics
-
----
-
-## SVG Widgets
-
-Render rich widgets inside Markdown.
-
-Examples:
-
-* Statistics
-* Charts
-* Heatmaps
-* Timelines
-* Project summaries
-
----
-
-## Comment System (Planned)
-
-GitHub-native comments rendered as SVG.
-
-Designed to work inside Markdown.
-
----
-
-## Dashboard
-
-Modern analytics dashboard including:
-
-* Today
-* Yesterday
-* Last 7 Days
-* Last 30 Days
-* Referrer
-* Country
-* Browser
-* Device
-* Trends
-
----
-
-# Architecture
-
-SVGStat operates inside a three-repository SaaS architecture.
-
-```text
-Developers / Browsers / README Embeds
-                 │
-                 ▼
-           Cloudflare CDN
-                 │
-                 ▼
-           SVGStat Go Engine
-        ┌────────┼────────┐
-        ▼        ▼        ▼
-   Renderer  Analytics   API
-        │        │        │
-        └────┬───┴────────┘
-             ▼
-           Redis
-             │
-             ▼
-           Worker
-             │
-             ▼
-        PostgreSQL
-
-APayShop Official Site / User Portal
-             │
-             ▼
- Shoply SaaS Base / Billing / Project Lifecycle
+```markdown
+![Visits](https://svgstat.com/svg/demo/counter/visits.svg?label=Visits&color=7c3aed)
 ```
 
-Responsibilities are strictly separated.
+## Quick Start
 
-## Go Service
+### Requirements
 
-Responsible for:
+- Go `1.25.1`
+- Podman or Docker
+- Podman Compose or Docker Compose
 
-* SVG Rendering
-* Analytics
-* Counters
-* Widgets
-* Badge Generation
-* Event Collection
-* API
+### 1. Prepare environment
 
----
-
-## APayShop
-
-Responsible for:
-
-* Official Website
-* Pricing Portal
-* User Account Center
-* Public Product Entry
-* Purchase Entry Flow
-
-APayShop does not render production SVG URLs.
-
----
-
-## Shoply
-
-Responsible for:
-
-* Authentication
-* OAuth
-* Billing
-* Subscription
-* Dashboard
-* User Management
-* Project Management
-* API Keys
-
-Shoply manages lifecycle and control-plane state.
-
-Shoply never renders SVG in the hot path.
-
----
-
-# Design Philosophy
-
-SVGStat follows several principles.
-
-## Performance First
-
-High-frequency requests should avoid database access.
-
-Redis is always the first write target.
-
----
-
-## API First
-
-Every feature must be exposed through APIs.
-
-The dashboard is only a consumer of APIs.
-
----
-
-## Stateless Rendering
-
-Every SVG request should be stateless.
-
-Horizontal scaling should be effortless.
-
----
-
-## Renderer & Analytics Separation
-
-Rendering and analytics are independent modules.
-
-Neither should depend on the other.
-
----
-
-## Cache First
-
-Cache hierarchy:
-
-```text
-Memory Cache
-
-↓
-
-Redis
-
-↓
-
-PostgreSQL
+```bash
+cp .env.example .env
 ```
 
----
+### 2. Start PostgreSQL and Redis
 
-# Performance Goals
+```bash
+make up
+```
 
-SVG Rendering
+### 3. Apply database migrations
 
-* P95 < 20 ms
-* P99 < 50 ms
+```bash
+make migrate-up
+```
 
-Analytics
+### 4. Start the app
 
-* Redis-first
-* Worker aggregation
-* Zero database writes on hot paths
+Use hot reload:
 
----
+```bash
+make watch
+```
 
-# Project Structure
+Or run the API directly:
+
+```bash
+go run cmd/api/main.go
+```
+
+### 5. Open the app
+
+- SPA: [http://localhost:8080](http://localhost:8080)
+- Health check: [http://localhost:8080/health](http://localhost:8080/health)
+
+### Optional: seed local test data
+
+```bash
+go run scripts/init_test_data.go
+```
+
+## API And Embed Examples
+
+### Counter SVG
+
+```text
+GET /svg/{projectSlug}/counter/{name}.svg
+```
+
+Example:
+
+```text
+http://localhost:8080/svg/demo/counter/visits.svg?label=Visits&color=brightgreen
+```
+
+### Badge SVG
+
+```text
+GET /svg/{projectSlug}/badge/{name}.svg
+```
+
+Example:
+
+```text
+http://localhost:8080/svg/demo/badge/downloads.svg?label=Downloads&style=flat-square
+```
+
+### Project Statistics
+
+```text
+GET /api/v1/projects/{id}/stats
+```
+
+### Authentication
+
+```text
+POST /api/v1/auth/register
+POST /api/v1/auth/login
+POST /api/v1/auth/logout
+GET  /api/v1/auth/me
+```
+
+## Architecture
+
+SVGStat keeps rendering, analytics, and project management in one focused Go service with a lightweight SPA frontend.
+
+```text
+README / Docs / Websites / Dashboards
+                │
+                ▼
+          SVGStat HTTP Layer
+        ┌───────┼────────┐
+        ▼       ▼        ▼
+      SPA     API    SVG Renderer
+                │
+                ▼
+              Redis
+                │
+                ▼
+           PostgreSQL
+```
+
+Design principles:
+
+- Performance first
+- Redis-first event handling
+- Stateless SVG rendering
+- API-first product design
+- Clear separation between rendering and analytics
+
+## Project Structure
 
 ```text
 cmd/
-    api/
+  api/        # API server entrypoint
+  migrate/    # migration CLI
 
 internal/
-    analytics/
-    renderer/
-    counter/
-    badge/
-    widget/
-    cache/
-    middleware/
-    worker/
-    auth/
-    config/
-    metrics/
-    project/
+  analytics/  # statistics aggregation
+  api/        # routes and handlers
+  auth/       # auth and session logic
+  cache/      # cache layer
+  config/     # configuration loading
+  counter/    # counter SVG generation
+  database/   # database bootstrap
+  geoip/      # GeoIP lookup
+  migrate/    # migration runner
+  project/    # project data access
+  renderer/   # shared SVG rendering
 
-pkg/
-
-templates/
-
-configs/
-
-scripts/
-
-deploy/
-
-docs/
+migrations/   # SQL migrations
+scripts/      # helper scripts
+web/          # Alpine.js SPA frontend
+resource/     # static resources
 ```
 
----
+## Tech Stack
 
-# Tech Stack
+- Go `1.25.1`
+- PostgreSQL `16`
+- Redis `7`
+- Gorilla Mux
+- pgx `v5`
+- go-redis `v9`
+- Alpine.js
+- UnoCSS Runtime
 
-Backend
+## Roadmap
 
-* Go
-* PostgreSQL
-* Redis
+### Current
 
-Platform
+- Dynamic SVG counters
+- Dynamic SVG badges
+- Project dashboard
+- Traffic analytics
+- User auth and project management
 
-* Shoply SaaS
+### Next
 
-Infrastructure
+- Richer SVG widgets
+- Trend views and chart surfaces
+- Public project dashboards
+- Team collaboration support
 
-* Cloudflare
-* Docker
-* Docker Compose
+### Later
 
-Future
+- SVG-native comments
+- Marketplace and templates
+- Self-hosting improvements
 
-* Kubernetes
-* Multi-region Deployment
+## Documentation
 
----
+- [GETTING_STARTED.md](./GETTING_STARTED.md)
+- [API.md](./API.md)
+- [ARCHITECTURE.md](./ARCHITECTURE.md)
+- [DATABASE.md](./DATABASE.md)
+- [MIGRATIONS.md](./MIGRATIONS.md)
+- [ANALYTICS.md](./ANALYTICS.md)
+- [RENDERER.md](./RENDERER.md)
+- [REDIS.md](./REDIS.md)
+- [INTEGRATION.md](./INTEGRATION.md)
+- [CONTRIBUTING.md](./CONTRIBUTING.md)
+- [AGENT.md](./AGENT.md)
 
-# Roadmap
-
-## V1
-
-* Dynamic Counter
-* Badge
-* Project Dashboard
-* Analytics
-* README Statistics
-
----
-
-## V2
-
-* Widgets
-* Heatmaps
-* Charts
-* Timeline
-* Team Support
-
----
-
-## V3
-
-* SVG Comment
-* Public Dashboard
-* Team Collaboration
-* Marketplace
-
----
-
-# Self Hosting
-
-Coming Soon.
-
----
-
-# Documentation
-
-* AGENT.md
-* ARCHITECTURE.md
-* API.md
-* CONTRACTS.md
-* INTEGRATION.md
-* CONTRIBUTING.md
-* DATABASE.md
-* SCHEMA.md
-* MIGRATIONS.md
-* SQL_DRAFTS.md
-* REDIS.md
-* WORKER.md
-* RENDERER.md
-* ANALYTICS.md
-
----
-
-# Contributing
+## Contributing
 
 Contributions are welcome.
 
-Before contributing, please read:
+Before opening a PR, please read:
 
-* CONTRIBUTING.md
-* AGENT.md
+- [CONTRIBUTING.md](./CONTRIBUTING.md)
+- [AGENT.md](./AGENT.md)
 
----
-
-# License
+## License
 
 MIT License.
 
----
+## Vision
 
-# Vision
+SVGStat is more than a visitor counter.
 
-SVGStat is not simply a visitor counter.
-
-It aims to become the infrastructure layer for developer-facing SVG analytics.
-
-Just as Prometheus became the standard for metrics collection and Grafana became the standard for visualization, SVGStat aims to become the standard platform for analytics embedded in SVG.
-
-Our mission is simple:
-
-> Make analytics as easy to embed as an image.
+It is building the infrastructure layer for developer-facing analytics that can be distributed as SVG, cached like static assets, and embedded as easily as an image.

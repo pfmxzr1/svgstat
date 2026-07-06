@@ -18,6 +18,28 @@ function createEmptyProjectStats() {
     };
 }
 
+function createEmptyVisitorPage() {
+    return {
+        projectId: '',
+        date: '',
+        page: 1,
+        pageSize: 20,
+        total: 0,
+        totalPages: 0,
+        items: []
+    };
+}
+
+function createDefaultVisitorFilters() {
+    return {
+        device: '',
+        browser: '',
+        path: '',
+        sort: 'last_seen_desc',
+        pageSize: 20
+    };
+}
+
 // Define the Alpine component
 function spaApp() {
     return {
@@ -31,8 +53,13 @@ function spaApp() {
         showCodeModal: false,
         expandedVisitorId: null,
         selectedProject: null,
+        lastLoadedStatsProjectId: '',
+        lastLoadedVisitorsRequestKey: '',
         projectStats: createEmptyProjectStats(),
+        visitorsPage: createEmptyVisitorPage(),
+        visitorFilters: createDefaultVisitorFilters(),
         loadingStats: false,
+        loadingVisitors: false,
         codeSettings: {
             counterName: 'visits',
             counterLabel: 'Visits',
@@ -71,11 +98,6 @@ function spaApp() {
                 localStorage.setItem('svgstat-lang', val);
                 document.documentElement.lang = val;
             });
-            this.$watch('selectedProject', (val) => {
-                if (val && this.currentPage === 'project-detail') {
-                    this.loadStats(val.id);
-                }
-            });
             document.documentElement.lang = this.lang;
             this.parseRoute();
             window.addEventListener('popstate', () => this.parseRoute());
@@ -90,40 +112,60 @@ function spaApp() {
             if (path === '/login') {
                 this.currentPage = 'login';
                 this.selectedProject = null;
+                this.lastLoadedStatsProjectId = '';
+                this.lastLoadedVisitorsRequestKey = '';
                 this.showCodeModal = false;
                 this.expandedVisitorId = null;
                 this.projectStats = createEmptyProjectStats();
+                this.visitorsPage = createEmptyVisitorPage();
+                this.visitorFilters = createDefaultVisitorFilters();
             } else if (path === '/register') {
                 this.currentPage = 'register';
                 this.selectedProject = null;
+                this.lastLoadedStatsProjectId = '';
+                this.lastLoadedVisitorsRequestKey = '';
                 this.showCodeModal = false;
                 this.expandedVisitorId = null;
                 this.projectStats = createEmptyProjectStats();
+                this.visitorsPage = createEmptyVisitorPage();
+                this.visitorFilters = createDefaultVisitorFilters();
             } else if (path === '/dashboard') {
                 this.currentPage = 'dashboard';
                 this.selectedProject = null;
+                this.lastLoadedStatsProjectId = '';
+                this.lastLoadedVisitorsRequestKey = '';
                 this.showCodeModal = false;
                 this.expandedVisitorId = null;
                 this.projectStats = createEmptyProjectStats();
+                this.visitorsPage = createEmptyVisitorPage();
+                this.visitorFilters = createDefaultVisitorFilters();
             } else if (path.startsWith('/dashboard/')) {
                 // 处理项目详情路由
                 const slug = path.substring('/dashboard/'.length);
                 this.currentPage = 'project-detail';
                 this.showCodeModal = false;
                 this.expandedVisitorId = null;
+                this.lastLoadedVisitorsRequestKey = '';
+                this.visitorFilters = createDefaultVisitorFilters();
                 // 如果项目已经加载过，则查找对应的项目
                 if (this.projects.length > 0) {
                     const project = this.projects.find(p => p.slug === slug);
                     if (project) {
                         this.selectedProject = project;
+                        this.loadStats(project.id);
+                        this.loadVisitors(project.id, 1);
                     }
                 }
             } else {
                 this.currentPage = 'home';
                 this.selectedProject = null;
+                this.lastLoadedStatsProjectId = '';
+                this.lastLoadedVisitorsRequestKey = '';
                 this.showCodeModal = false;
                 this.expandedVisitorId = null;
                 this.projectStats = createEmptyProjectStats();
+                this.visitorsPage = createEmptyVisitorPage();
+                this.visitorFilters = createDefaultVisitorFilters();
             }
         },
 
@@ -235,12 +277,14 @@ function spaApp() {
                 if (data.success) {
                     this.projects = data.data;
                     // 如果当前是项目详情页面，查找对应的项目
-                    if (this.currentPage === 'project-detail' && !this.selectedProject) {
+                    if (this.currentPage === 'project-detail') {
                         const path = window.location.pathname;
                         const slug = path.substring('/dashboard/'.length);
                         const project = this.projects.find(p => p.slug === slug);
                         if (project) {
                             this.selectedProject = project;
+                            this.loadStats(project.id);
+                            this.loadVisitors(project.id, 1);
                         }
                     }
                 }
@@ -355,20 +399,58 @@ function spaApp() {
             return `/svg/${project.slug}/badge/${name}.svg${query}`;
         },
 
+        getCounterSvgUrl(project = this.selectedProject) {
+            return this.getAbsoluteUrl(this.getCounterSvgPath(project));
+        },
+
+        getBadgeSvgUrl(project = this.selectedProject) {
+            return this.getAbsoluteUrl(this.getBadgeSvgPath(project));
+        },
+
         getCounterMarkdown(project = this.selectedProject) {
             const label = this.codeSettings.counterLabel || this.codeSettings.counterName || 'Visits';
-            const path = this.getCounterSvgPath(project);
-            return path ? `![${label}](${path})` : '';
+            const url = this.getCounterSvgUrl(project);
+            return url ? `![${label}](${url})` : '';
         },
 
         getBadgeMarkdown(project = this.selectedProject) {
             const label = this.codeSettings.badgeLabel || this.codeSettings.badgeName || 'Downloads';
-            const path = this.getBadgeSvgPath(project);
-            return path ? `![${label}](${path})` : '';
+            const url = this.getBadgeSvgUrl(project);
+            return url ? `![${label}](${url})` : '';
+        },
+
+        getPublicBaseUrl() {
+            return window.location.origin;
+        },
+
+        getAbsoluteUrl(path) {
+            return path ? `${this.getPublicBaseUrl()}${path}` : '';
+        },
+
+        getDemoCounterUrl() {
+            const path = `/svg/demo/counter/visits.svg${this.getQueryString({
+                label: this.lang === 'zh' ? '访问量' : 'Visits',
+                color: '7c3aed'
+            })}`;
+            return this.getAbsoluteUrl(path);
+        },
+
+        getDemoBadgeUrl() {
+            const path = `/svg/demo/badge/downloads.svg${this.getQueryString({
+                label: this.lang === 'zh' ? '下载量' : 'Downloads',
+                color: '0ea5e9',
+                style: 'flat-square'
+            })}`;
+            return this.getAbsoluteUrl(path);
+        },
+
+        getDemoMarkdown() {
+            const label = this.lang === 'zh' ? '访问量' : 'Visits';
+            return `![${label}](${this.getDemoCounterUrl()})`;
         },
 
         copyText(text) {
-            navigator.clipboard.writeText(window.location.origin + text).then(() => {
+            navigator.clipboard.writeText(text).then(() => {
                 alert(this.t('copied'));
             });
         },
@@ -402,15 +484,85 @@ function spaApp() {
             return parts.length ? parts.join(' / ') : '-';
         },
 
-        getVisibleVisitors() {
-            return (this.projectStats.visitors || []).slice(0, 20);
+        getVisitorPaginationText() {
+            return this.t('visitorPagination')
+                .replace('{page}', this.visitorsPage.page || 1)
+                .replace('{totalPages}', this.visitorsPage.totalPages || 1);
+        },
+
+        getVisitorQueryString(page = 1) {
+            const params = new URLSearchParams();
+            params.set('page', String(page));
+            params.set('page_size', String(this.visitorFilters.pageSize || 20));
+            if (this.visitorFilters.device) params.set('device', this.visitorFilters.device);
+            if (this.visitorFilters.browser) params.set('browser', this.visitorFilters.browser);
+            if (this.visitorFilters.path) params.set('path', this.visitorFilters.path);
+            if (this.visitorFilters.sort) params.set('sort', this.visitorFilters.sort);
+            return params.toString();
+        },
+
+        applyVisitorFilters() {
+            if (!this.selectedProject) return;
+            this.lastLoadedVisitorsRequestKey = '';
+            this.loadVisitors(this.selectedProject.id, 1);
+        },
+
+        resetVisitorFilters() {
+            this.visitorFilters = createDefaultVisitorFilters();
+            this.applyVisitorFilters();
         },
 
         toggleVisitorDetail(visitorId) {
             this.expandedVisitorId = this.expandedVisitorId === visitorId ? null : visitorId;
         },
+
+        async loadVisitors(projectId, page = 1) {
+            if (!projectId) return;
+
+            const pageSize = this.visitorFilters.pageSize || 20;
+            const requestKey = `${projectId}:${page}:${pageSize}`;
+            const queryString = this.getVisitorQueryString(page);
+            const fullRequestKey = `${projectId}:${queryString}`;
+            if (this.lastLoadedVisitorsRequestKey === fullRequestKey) return;
+
+            this.lastLoadedVisitorsRequestKey = fullRequestKey;
+            this.loadingVisitors = true;
+            this.expandedVisitorId = null;
+            this.visitorsPage = {
+                ...createEmptyVisitorPage(),
+                page,
+                pageSize
+            };
+
+            try {
+                const res = await fetch(`/api/v1/projects/${projectId}/visitors?${queryString}`, { credentials: 'same-origin' });
+                const data = await res.json();
+                if (data.success) {
+                    this.visitorsPage = {
+                        ...createEmptyVisitorPage(),
+                        ...data.data
+                    };
+                }
+            } catch (e) {
+                this.lastLoadedVisitorsRequestKey = '';
+                console.error('Failed to load visitors', e);
+            } finally {
+                this.loadingVisitors = false;
+            }
+        },
+
+        changeVisitorPage(nextPage) {
+            if (!this.selectedProject) return;
+            if (nextPage < 1) return;
+            if (this.visitorsPage.totalPages > 0 && nextPage > this.visitorsPage.totalPages) return;
+            this.loadVisitors(this.selectedProject.id, nextPage);
+        },
         
         async loadStats(projectId) {
+            if (!projectId) return;
+            if (this.lastLoadedStatsProjectId === projectId) return;
+
+            this.lastLoadedStatsProjectId = projectId;
             this.loadingStats = true;
             this.expandedVisitorId = null;
             this.projectStats = createEmptyProjectStats();
@@ -424,6 +576,7 @@ function spaApp() {
                     };
                 }
             } catch (e) {
+                this.lastLoadedStatsProjectId = '';
                 console.error('Failed to load stats', e);
             } finally {
                 this.loadingStats = false;

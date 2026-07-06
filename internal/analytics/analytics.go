@@ -3,8 +3,8 @@ package analytics
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/json"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -40,21 +40,20 @@ type RequestData struct {
 }
 
 type DailyStats struct {
-	ProjectID  string            `json:"projectId"`
-	Date       string            `json:"date"`
-	PV         int64             `json:"pv"`
-	UV         int64             `json:"uv"`
-	Requests   int64             `json:"requests"`
-	Bots       int64             `json:"bots"`
-	Referrers  map[string]int64  `json:"referrers"`
-	Countries  map[string]int64  `json:"countries"`
-	Regions    map[string]int64  `json:"regions"`
-	Cities     map[string]int64  `json:"cities"`
-	Devices    map[string]int64  `json:"devices"`
-	Browsers   map[string]int64  `json:"browsers"`
-	Paths      map[string]int64  `json:"paths"`
-	IPs        map[string]int64  `json:"ips"`
-	Visitors   []VisitorDetail   `json:"visitors"`
+	ProjectID string           `json:"projectId"`
+	Date      string           `json:"date"`
+	PV        int64            `json:"pv"`
+	UV        int64            `json:"uv"`
+	Requests  int64            `json:"requests"`
+	Bots      int64            `json:"bots"`
+	Referrers map[string]int64 `json:"referrers"`
+	Countries map[string]int64 `json:"countries"`
+	Regions   map[string]int64 `json:"regions"`
+	Cities    map[string]int64 `json:"cities"`
+	Devices   map[string]int64 `json:"devices"`
+	Browsers  map[string]int64 `json:"browsers"`
+	Paths     map[string]int64 `json:"paths"`
+	IPs       map[string]int64 `json:"ips"`
 }
 
 type VisitorDetail struct {
@@ -70,6 +69,25 @@ type VisitorDetail struct {
 	Requests    int64  `json:"requests"`
 	FirstSeenAt string `json:"firstSeenAt"`
 	LastSeenAt  string `json:"lastSeenAt"`
+}
+
+type VisitorList struct {
+	ProjectID  string          `json:"projectId"`
+	Date       string          `json:"date"`
+	Page       int             `json:"page"`
+	PageSize   int             `json:"pageSize"`
+	Total      int             `json:"total"`
+	TotalPages int             `json:"totalPages"`
+	Items      []VisitorDetail `json:"items"`
+}
+
+type VisitorQuery struct {
+	Page     int
+	PageSize int
+	Device   string
+	Browser  string
+	Path     string
+	Sort     string
 }
 
 func New(cache *cache.Cache, projectRepo project.Repository, geoIP *geoip.GeoIP) *Analytics {
@@ -180,7 +198,6 @@ func (a *Analytics) GetStats(ctx context.Context, projectID, date string) (*Dail
 	browserKey := cache.BuildKey("project", projectID, "browser", date)
 	pathKey := cache.BuildKey("project", projectID, "path", date)
 	ipKey := cache.BuildKey("project", projectID, "ip", date)
-	visitorsKey := cache.BuildKey("project", projectID, "visitors", date)
 
 	pvCmd := pipe.Get(ctx, pvKey)
 	requestsCmd := pipe.Get(ctx, requestsKey)
@@ -194,7 +211,6 @@ func (a *Analytics) GetStats(ctx context.Context, projectID, date string) (*Dail
 	browsersCmd := pipe.HGetAll(ctx, browserKey)
 	pathsCmd := pipe.HGetAll(ctx, pathKey)
 	ipsCmd := pipe.HGetAll(ctx, ipKey)
-	visitorsCmd := pipe.SMembers(ctx, visitorsKey)
 
 	_, err := pipe.Exec(ctx)
 	if err != nil && err != redis.Nil {
@@ -212,7 +228,6 @@ func (a *Analytics) GetStats(ctx context.Context, projectID, date string) (*Dail
 		Browsers:  make(map[string]int64),
 		Paths:     make(map[string]int64),
 		IPs:       make(map[string]int64),
-		Visitors:  make([]VisitorDetail, 0),
 	}
 
 	stats.PV, _ = pvCmd.Int64()
@@ -245,38 +260,72 @@ func (a *Analytics) GetStats(ctx context.Context, projectID, date string) (*Dail
 		stats.IPs[k], _ = parseToInt64(v)
 	}
 
-	visitorIDs := visitorsCmd.Val()
-	if len(visitorIDs) > 0 {
-		visitorPipe := a.cache.Pipeline()
-		visitorDetailCmds := make(map[string]*redis.MapStringStringCmd, len(visitorIDs))
-		for _, visitorID := range visitorIDs {
-			visitorKey := cache.BuildKey("project", projectID, "visitor", date, visitorID)
-			visitorDetailCmds[visitorID] = visitorPipe.HGetAll(ctx, visitorKey)
-		}
+	return stats, nil
+}
 
-		if _, err := visitorPipe.Exec(ctx); err != nil && err != redis.Nil {
-			return nil, fmt.Errorf("failed to get visitor details: %w", err)
-		}
+func (a *Analytics) GetTodayVisitors(ctx context.Context, projectID string, query VisitorQuery) (*VisitorList, error) {
+	date := time.Now().Format("2006-01-02")
+	return a.GetVisitors(ctx, projectID, date, query)
+}
 
-		for _, visitorID := range visitorIDs {
-			detail := buildVisitorDetail(visitorID, visitorDetailCmds[visitorID].Val())
-			if detail.Requests == 0 {
-				continue
-			}
-			stats.Visitors = append(stats.Visitors, detail)
-		}
-
-		sort.Slice(stats.Visitors, func(i, j int) bool {
-			leftTime, _ := time.Parse(time.RFC3339, stats.Visitors[i].LastSeenAt)
-			rightTime, _ := time.Parse(time.RFC3339, stats.Visitors[j].LastSeenAt)
-			if leftTime.Equal(rightTime) {
-				return stats.Visitors[i].Requests > stats.Visitors[j].Requests
-			}
-			return leftTime.After(rightTime)
-		})
+func (a *Analytics) GetVisitors(ctx context.Context, projectID, date string, query VisitorQuery) (*VisitorList, error) {
+	if query.Page < 1 {
+		query.Page = 1
+	}
+	if query.PageSize < 1 {
+		query.PageSize = 20
+	}
+	if query.PageSize > 100 {
+		query.PageSize = 100
 	}
 
-	return stats, nil
+	visitorIDs, err := a.cache.GetClient().SMembers(ctx, cache.BuildKey("project", projectID, "visitors", date)).Result()
+	if err != nil && err != redis.Nil {
+		return nil, fmt.Errorf("failed to get visitors: %w", err)
+	}
+
+	details, err := a.getVisitorDetails(ctx, projectID, date, visitorIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	details = filterVisitorDetails(details, query)
+	sortVisitorDetails(details, query.Sort)
+
+	total := len(details)
+	totalPages := 0
+	if total > 0 {
+		totalPages = (total + query.PageSize - 1) / query.PageSize
+	}
+	if totalPages == 0 {
+		query.Page = 1
+	} else if query.Page > totalPages {
+		query.Page = totalPages
+	}
+
+	start := (query.Page - 1) * query.PageSize
+	end := start + query.PageSize
+	if start > total {
+		start = total
+	}
+	if end > total {
+		end = total
+	}
+
+	items := make([]VisitorDetail, 0)
+	if start < end {
+		items = details[start:end]
+	}
+
+	return &VisitorList{
+		ProjectID:  projectID,
+		Date:       date,
+		Page:       query.Page,
+		PageSize:   query.PageSize,
+		Total:      total,
+		TotalPages: totalPages,
+		Items:      items,
+	}, nil
 }
 
 func (a *Analytics) extractRequestData(req *http.Request, projectID string) *RequestData {
@@ -382,17 +431,114 @@ func parseToInt64(s string) (int64, error) {
 	return result, err
 }
 
+func (a *Analytics) getVisitorDetails(ctx context.Context, projectID, date string, visitorIDs []string) ([]VisitorDetail, error) {
+	if len(visitorIDs) == 0 {
+		return []VisitorDetail{}, nil
+	}
+
+	visitorPipe := a.cache.Pipeline()
+	visitorDetailCmds := make(map[string]*redis.MapStringStringCmd, len(visitorIDs))
+	for _, visitorID := range visitorIDs {
+		visitorKey := cache.BuildKey("project", projectID, "visitor", date, visitorID)
+		visitorDetailCmds[visitorID] = visitorPipe.HGetAll(ctx, visitorKey)
+	}
+
+	if _, err := visitorPipe.Exec(ctx); err != nil && err != redis.Nil {
+		return nil, fmt.Errorf("failed to get visitor details: %w", err)
+	}
+
+	details := make([]VisitorDetail, 0, len(visitorIDs))
+	for _, visitorID := range visitorIDs {
+		detail := buildVisitorDetail(visitorID, visitorDetailCmds[visitorID].Val())
+		if detail.Requests == 0 {
+			continue
+		}
+		details = append(details, detail)
+	}
+
+	sort.Slice(details, func(i, j int) bool {
+		leftTime, _ := time.Parse(time.RFC3339, details[i].LastSeenAt)
+		rightTime, _ := time.Parse(time.RFC3339, details[j].LastSeenAt)
+		if leftTime.Equal(rightTime) {
+			return details[i].Requests > details[j].Requests
+		}
+		return leftTime.After(rightTime)
+	})
+
+	return details, nil
+}
+
+func filterVisitorDetails(details []VisitorDetail, query VisitorQuery) []VisitorDetail {
+	device := strings.TrimSpace(strings.ToLower(query.Device))
+	browser := strings.TrimSpace(strings.ToLower(query.Browser))
+	path := strings.TrimSpace(strings.ToLower(query.Path))
+
+	if device == "" && browser == "" && path == "" {
+		return details
+	}
+
+	filtered := make([]VisitorDetail, 0, len(details))
+	for _, detail := range details {
+		if device != "" && strings.ToLower(detail.DeviceType) != device {
+			continue
+		}
+		if browser != "" && strings.ToLower(detail.Browser) != browser {
+			continue
+		}
+		if path != "" && !strings.Contains(strings.ToLower(detail.Path), path) {
+			continue
+		}
+		filtered = append(filtered, detail)
+	}
+
+	return filtered
+}
+
+func sortVisitorDetails(details []VisitorDetail, sortBy string) {
+	switch sortBy {
+	case "requests_asc":
+		sort.Slice(details, func(i, j int) bool {
+			if details[i].Requests == details[j].Requests {
+				return details[i].LastSeenAt < details[j].LastSeenAt
+			}
+			return details[i].Requests < details[j].Requests
+		})
+	case "requests_desc":
+		sort.Slice(details, func(i, j int) bool {
+			if details[i].Requests == details[j].Requests {
+				return details[i].LastSeenAt > details[j].LastSeenAt
+			}
+			return details[i].Requests > details[j].Requests
+		})
+	case "first_seen_asc":
+		sort.Slice(details, func(i, j int) bool {
+			return details[i].FirstSeenAt < details[j].FirstSeenAt
+		})
+	case "first_seen_desc":
+		sort.Slice(details, func(i, j int) bool {
+			return details[i].FirstSeenAt > details[j].FirstSeenAt
+		})
+	default:
+		sort.Slice(details, func(i, j int) bool {
+			if details[i].LastSeenAt == details[j].LastSeenAt {
+				return details[i].Requests > details[j].Requests
+			}
+			return details[i].LastSeenAt > details[j].LastSeenAt
+		})
+	}
+}
+
 func buildVisitorDetail(visitorID string, data map[string]string) VisitorDetail {
 	detail := VisitorDetail{
-		VisitorID: visitorID,
-		IP:        data["ip"],
-		Path:      data["path"],
-		Referrer:  data["referrer"],
-		Country:   data["country"],
-		Region:    data["region"],
-		City:      data["city"],
-		DeviceType: data["device_type"],
-		Browser:   data["browser"],
+		VisitorID:   visitorID,
+		IP:          data["ip"],
+		Path:        data["path"],
+		Referrer:    data["referrer"],
+		Country:     data["country"],
+		Region:      data["region"],
+		City:        data["city"],
+		DeviceType:  data["device_type"],
+		Browser:     data["browser"],
 		FirstSeenAt: data["first_seen_at"],
 		LastSeenAt:  data["last_seen_at"],
 	}

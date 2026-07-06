@@ -153,10 +153,59 @@
             <div class="bg-white rounded-xl shadow-sm p-6 stat-card">
                 <div class="flex items-center justify-between gap-4 mb-4">
                     <h3 class="font-semibold text-gray-900" x-text="t('visitorDetails')"></h3>
-                    <span class="text-sm text-gray-500" x-text="`${t('recentVisitors')} / ${projectStats.visitors.length || 0} UV`"></span>
+                    <div class="flex items-center gap-3">
+                        <span class="text-sm text-gray-500" x-text="`${t('recentVisitors')} / ${visitorsPage.total || 0} UV`"></span>
+                        <span class="text-sm text-gray-400" x-show="visitorsPage.totalPages > 0" x-text="getVisitorPaginationText()"></span>
+                    </div>
                 </div>
 
-                <div x-show="projectStats.visitors && projectStats.visitors.length > 0" class="overflow-x-auto">
+                <div class="grid md:grid-cols-5 gap-3 mb-5">
+                    <select x-model="visitorFilters.device" @change="applyVisitorFilters()" class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-200">
+                        <option value="" x-text="t('allDevices')"></option>
+                        <option value="desktop">desktop</option>
+                        <option value="mobile">mobile</option>
+                        <option value="tablet">tablet</option>
+                    </select>
+
+                    <select x-model="visitorFilters.browser" @change="applyVisitorFilters()" class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-200">
+                        <option value="" x-text="t('allBrowsers')"></option>
+                        <option value="chrome">chrome</option>
+                        <option value="safari">safari</option>
+                        <option value="firefox">firefox</option>
+                        <option value="edge">edge</option>
+                    </select>
+
+                    <input
+                        x-model="visitorFilters.path"
+                        @keydown.enter.prevent="applyVisitorFilters()"
+                        class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-200"
+                        :placeholder="t('pathPlaceholder')">
+
+                    <select x-model="visitorFilters.sort" @change="applyVisitorFilters()" class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-200">
+                        <option value="last_seen_desc" x-text="t('sortRecent')"></option>
+                        <option value="requests_desc" x-text="t('sortRequestsDesc')"></option>
+                        <option value="requests_asc" x-text="t('sortRequestsAsc')"></option>
+                    </select>
+
+                    <div class="flex items-center gap-2">
+                        <select x-model.number="visitorFilters.pageSize" @change="applyVisitorFilters()" class="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-200">
+                            <option :value="10">10</option>
+                            <option :value="20">20</option>
+                            <option :value="50">50</option>
+                        </select>
+                        <button @click="applyVisitorFilters()" class="inline-flex items-center rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-sm text-purple-600 hover:border-purple-300 hover:bg-purple-100 transition-colors" x-text="t('applyFilters')"></button>
+                        <button @click="resetVisitorFilters()" class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 hover:border-purple-200 hover:text-purple-600 transition-colors" x-text="t('resetFilters')"></button>
+                    </div>
+                </div>
+
+                <template x-if="loadingVisitors">
+                    <div class="text-center py-6">
+                        <div class="animate-spin w-6 h-6 border-2 border-purple-200 border-purple-600 rounded-full mx-auto mb-3"></div>
+                        <p class="text-sm text-gray-500" x-text="t('visitorLoading')"></p>
+                    </div>
+                </template>
+
+                <div x-show="!loadingVisitors && visitorsPage.items && visitorsPage.items.length > 0" class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-100">
                         <thead>
                             <tr class="text-left text-xs uppercase tracking-wide text-gray-400">
@@ -170,9 +219,8 @@
                                 <th class="py-3 font-medium" x-text="t('lastSeen')"></th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-100">
-                            <template x-for="visitor in getVisibleVisitors()" :key="visitor.visitorId">
-                                <template>
+                        <template x-for="visitor in visitorsPage.items" :key="visitor.visitorId">
+                            <tbody class="divide-y divide-gray-100">
                                     <tr class="align-top cursor-pointer hover:bg-gray-50 transition-colors" @click="toggleVisitorDetail(visitor.visitorId)">
                                         <td class="py-4 pr-4">
                                             <div class="flex items-center gap-2">
@@ -220,13 +268,28 @@
                                             </div>
                                         </td>
                                     </tr>
-                                </template>
-                            </template>
-                        </tbody>
+                            </tbody>
+                        </template>
                     </table>
                 </div>
 
-                <p x-show="!projectStats.visitors || projectStats.visitors.length === 0" class="text-gray-500 text-center py-6" x-text="t('noData')"></p>
+                <div x-show="!loadingVisitors && visitorsPage.items && visitorsPage.items.length > 0" class="mt-5 flex items-center justify-between gap-4">
+                    <button
+                        @click="changeVisitorPage(visitorsPage.page - 1)"
+                        :disabled="visitorsPage.page <= 1"
+                        class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-600 hover:border-purple-200 hover:text-purple-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        x-text="t('previousPage')">
+                    </button>
+                    <span class="text-sm text-gray-500" x-show="visitorsPage.totalPages > 0" x-text="getVisitorPaginationText()"></span>
+                    <button
+                        @click="changeVisitorPage(visitorsPage.page + 1)"
+                        :disabled="visitorsPage.totalPages === 0 || visitorsPage.page >= visitorsPage.totalPages"
+                        class="inline-flex items-center rounded-lg border border-purple-200 bg-purple-50 px-4 py-2 text-sm text-purple-600 hover:border-purple-300 hover:bg-purple-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        x-text="t('nextPage')">
+                    </button>
+                </div>
+
+                <p x-show="!loadingVisitors && (!visitorsPage.items || visitorsPage.items.length === 0)" class="text-gray-500 text-center py-6" x-text="t('noData')"></p>
             </div>
         </div>
     </div>

@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
+	"github.com/svgstat/svgstat/internal/analytics"
 	"github.com/svgstat/svgstat/internal/auth"
 	"github.com/svgstat/svgstat/internal/project"
 	"github.com/svgstat/svgstat/internal/renderer"
@@ -464,4 +466,51 @@ func (a *App) handleGetProjectStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.jsonSuccess(w, stats)
+}
+
+func (a *App) handleGetProjectVisitors(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value("user").(*auth.User)
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	p, err := a.projectRepo.GetByIDAndUser(r.Context(), id, user.ID)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get project")
+		a.jsonError(w, "Failed to get project", http.StatusInternalServerError)
+		return
+	}
+
+	if p == nil {
+		a.jsonError(w, "Project not found", http.StatusNotFound)
+		return
+	}
+
+	page := 1
+	pageSize := 20
+	if raw := r.URL.Query().Get("page"); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+	if raw := r.URL.Query().Get("page_size"); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			pageSize = parsed
+		}
+	}
+
+	visitors, err := a.analytics.GetTodayVisitors(r.Context(), id, analytics.VisitorQuery{
+		Page:     page,
+		PageSize: pageSize,
+		Device:   r.URL.Query().Get("device"),
+		Browser:  r.URL.Query().Get("browser"),
+		Path:     r.URL.Query().Get("path"),
+		Sort:     r.URL.Query().Get("sort"),
+	})
+	if err != nil {
+		log.Error().Err(err).Str("project_id", id).Msg("Failed to get visitors")
+		a.jsonError(w, "Failed to get visitors", http.StatusInternalServerError)
+		return
+	}
+
+	a.jsonSuccess(w, visitors)
 }
