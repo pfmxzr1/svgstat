@@ -7,6 +7,60 @@
                 <div class="flex flex-col sm:flex-row gap-4 justify-center">
                     <a href="#" @click.prevent="navigate('/register')" class="px-8 py-4 bg-white text-purple-700 rounded-lg font-semibold hover:bg-gray-100 transition-colors text-lg glow-card" x-text="t('startFree')"></a>
                     <a href="#features" class="px-8 py-4 border-2 border-white text-white rounded-lg font-semibold hover:bg-white hover:text-purple-700 transition-colors text-lg" x-text="t('learnMore')"></a>
+                    <a href="https://github.com/aihop/svgstat" target="_blank" rel="noopener noreferrer" class="px-8 py-4 border-2 border-white text-white rounded-lg font-semibold hover:bg-white hover:text-purple-700 transition-colors text-lg inline-flex items-center justify-center space-x-2">
+                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0 0 22 12.017C22 6.484 17.522 2 12 2Z"/>
+                        </svg>
+                        <span>GitHub</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <section class="py-20 bg-white fade-in-up" style="animation-delay: 0.15s;">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4" x-text="t('freeTitle')"></h2>
+                <p class="text-xl text-gray-600 mb-8" x-text="t('freeSubtitle')"></p>
+                <div class="bg-white rounded-2xl shadow-xl p-8 glow-card text-left border border-purple-100">
+                    <label class="block text-sm font-medium text-gray-700 mb-2" x-text="t('freePageIdLabel')"></label>
+                    <input
+                        x-model.lazy="freePageId"
+                        type="text"
+                        class="w-full px-4 py-3 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent mb-5"
+                        placeholder="github.com/user/repo">
+
+                    <div class="grid gap-4">
+                        <div class="rounded-xl border border-purple-100 bg-purple-50/70 p-4">
+                            <div class="text-sm font-semibold uppercase tracking-wide text-purple-700 mb-2" x-text="t('preview')"></div>
+                            <img :src="getFreeBadgePath()" class="h-5" alt="Free visitor badge preview">
+                        </div>
+                        <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                            <div class="flex items-center justify-between gap-4 mb-2">
+                                <div class="text-sm font-semibold uppercase tracking-wide text-gray-500" x-text="t('svgLink')"></div>
+                                <button @click="copyText(getFreeBadgeUrl())" class="px-3 py-1 rounded-lg border border-purple-200 bg-purple-50 text-purple-600 hover:bg-purple-100 hover:border-purple-300 shrink-0 text-sm transition-colors" x-text="t('copy')"></button>
+                            </div>
+                            <code class="block text-sm text-gray-800 break-all" x-text="getFreeBadgeUrl()"></code>
+                        </div>
+                        <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                            <div class="flex items-center justify-between gap-4 mb-2">
+                                <div class="text-sm font-semibold uppercase tracking-wide text-gray-500" x-text="t('markdownCode')"></div>
+                                <button @click="copyText(getFreeMarkdown())" class="px-3 py-1 rounded-lg border border-purple-200 bg-purple-50 text-purple-600 hover:bg-purple-100 hover:border-purple-300 shrink-0 text-sm transition-colors" x-text="t('copy')"></button>
+                            </div>
+                            <code class="block text-sm text-gray-800 break-all" x-text="getFreeMarkdown()"></code>
+                        </div>
+                        <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                            <div class="flex items-center justify-between gap-4 mb-2">
+                                <div class="text-sm font-semibold uppercase tracking-wide text-gray-500" x-text="t('htmlCode')"></div>
+                                <button @click="copyText(getFreeHtml())" class="px-3 py-1 rounded-lg border border-purple-200 bg-purple-50 text-purple-600 hover:bg-purple-100 hover:border-purple-300 shrink-0 text-sm transition-colors" x-text="t('copy')"></button>
+                            </div>
+                            <code class="block text-sm text-gray-800 break-all" x-text="getFreeHtml()"></code>
+                        </div>
+                    </div>
+                    <p class="mt-6 text-sm text-gray-500" x-text="t('freeNote')"></p>
+                    <div class="mt-4 rounded-xl border border-purple-200 bg-purple-50 p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                        <p class="text-sm text-purple-800" x-text="t('freeRegisterHint')"></p>
+                        <a href="#" @click.prevent="navigate(user ? '/dashboard' : '/register')" class="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 transition-colors shrink-0" x-text="user ? t('dashboard') : t('startFree')"></a>
+                    </div>
                 </div>
             </div>
         </section>
@@ -59,10 +113,16 @@
                         </div>
                         <div class="rounded-2xl border border-gray-200 bg-gray-50 p-5">
                             <div class="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-2" x-text="t('demoCounterUrl')"></div>
+                            <div class="mb-3">
+                                <img :src="getDemoCounterUrl()" class="h-5" alt="Live demo counter">
+                            </div>
                             <code class="block text-sm text-gray-800 break-all" x-text="getDemoCounterUrl()"></code>
                         </div>
                         <div class="rounded-2xl border border-gray-200 bg-gray-50 p-5">
                             <div class="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-2" x-text="t('demoBadgeUrl')"></div>
+                            <div class="mb-3">
+                                <img :src="getDemoBadgeUrl()" class="h-5" alt="Live demo badge">
+                            </div>
                             <code class="block text-sm text-gray-800 break-all" x-text="getDemoBadgeUrl()"></code>
                         </div>
                         <div class="rounded-2xl border border-gray-200 bg-gray-50 p-5">
@@ -92,7 +152,15 @@
                         </svg>
                         <span class="text-xl font-bold text-white">SVGStat</span>
                     </div>
-                    <p class="text-sm" x-text="t('copyright')"></p>
+                    <div class="flex items-center space-x-4">
+                        <a href="https://github.com/aihop/svgstat" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-white transition-colors inline-flex items-center space-x-2" aria-label="GitHub">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0 0 22 12.017C22 6.484 17.522 2 12 2Z"/>
+                            </svg>
+                            <span class="text-sm">GitHub</span>
+                        </a>
+                        <p class="text-sm" x-text="t('copyright')"></p>
+                    </div>
                 </div>
             </div>
         </footer>

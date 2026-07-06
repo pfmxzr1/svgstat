@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"math"
 	"net/url"
+	"regexp"
 	"strings"
 )
 
@@ -59,6 +60,7 @@ func loadTemplates() *template.Template {
 }
 
 func (r *Renderer) RenderCounter(data CounterData) (string, error) {
+	data.Color = normalizeColor(data.Color)
 	if data.Color == "" {
 		data.Color = "#007bff"
 	}
@@ -73,6 +75,7 @@ func (r *Renderer) RenderCounter(data CounterData) (string, error) {
 }
 
 func (r *Renderer) RenderBadge(data BadgeData) (string, error) {
+	data.Color = normalizeColor(data.Color)
 	if data.Color == "" {
 		data.Color = "#007bff"
 	}
@@ -138,6 +141,41 @@ func charWidth(r rune) float64 {
 
 func round1(f float64) float64 {
 	return math.Round(f*10) / 10
+}
+
+// shields.io-compatible color names
+var namedColors = map[string]string{
+	"brightgreen": "#4c1",
+	"green":       "#97ca00",
+	"yellowgreen": "#a4a61d",
+	"yellow":      "#dfb317",
+	"orange":      "#fe7d37",
+	"red":         "#e05d44",
+	"blue":        "#007ec6",
+	"lightgrey":   "#9f9f9f",
+	"lightgray":   "#9f9f9f",
+	"grey":        "#555",
+	"gray":        "#555",
+	"purple":      "#7c3aed",
+}
+
+var hexColorPattern = regexp.MustCompile(`^(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$`)
+
+// normalizeColor turns query-param color values into valid SVG fills: shields
+// color names and bare hex like "7c3aed" ("#" cannot appear in a URL query).
+// Anything else passes through for CSS to interpret.
+func normalizeColor(raw string) string {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return ""
+	}
+	if hex, ok := namedColors[strings.ToLower(value)]; ok {
+		return hex
+	}
+	if hexColorPattern.MatchString(value) {
+		return "#" + value
+	}
+	return value
 }
 
 func prepareHomepage(raw string) string {

@@ -1,18 +1,18 @@
 # SVGStat
 
-> Make analytics as easy to embed as an image.
+> Turn every visit into a visible signal.
 
 [中文说明](./README.zh-CN.md)
 
-SVGStat is a developer-first SVG analytics platform built with Go.
+SVGStat is a developer-first SVG analytics platform built with Go for the places where software gets judged in public: GitHub READMEs, docs, landing pages, changelogs, and internal dashboards.
 
-It helps you publish live counters, dynamic badges, and actionable traffic insights through plain SVG endpoints, so your GitHub README, documentation, landing pages, and dashboards can display real activity without injecting JavaScript.
+Instead of asking you to wire up tracking scripts, screenshots, or custom widgets, SVGStat turns metrics into live SVG endpoints. You ship a URL, embed it like an image, and instantly make your project look active, trusted, and alive.
 
 ## Why SVGStat
 
-Most analytics tools are designed for websites.
+Most analytics products are built for websites you fully control.
 
-SVGStat is designed for places where developers actually present work:
+SVGStat is built for high-visibility surfaces developers use to win trust:
 
 - GitHub README files
 - Markdown documents
@@ -21,63 +21,57 @@ SVGStat is designed for places where developers actually present work:
 - Open source project pages
 - Internal engineering dashboards
 
-Instead of shipping a tracking script, SVGStat turns analytics into embeddable image URLs. That makes it lightweight, cache-friendly, fast to distribute, and easy to integrate anywhere an `<img>` tag or Markdown image is supported.
+It combines presentation and analytics in one workflow:
+
+- Publish live counters as embeddable SVGs
+- Generate polished badges that match your project style
+- Attribute GitHub embeds with `page_id` when referrers are hidden
+- Track PV, UV, referrers, countries, devices, browsers, and recent visitors
+- Manage multiple projects and copy production-ready embed code with live preview
 
 ## What You Get
 
 ### Live SVG Counters
 
-Expose real-time metrics as SVG counters.
+Publish visitor counts, downloads, stars, followers, and custom metrics as lightweight SVG counters that work anywhere Markdown or an `<img>` tag is supported.
 
-Typical use cases:
+### Brand-Ready SVG Badges
 
-- Visitors
-- Downloads
-- Stars
-- Followers
-- Custom project metrics
+Generate production-ready badges with configurable labels, colors, styles, and clickable homepage links for README files, docs, product pages, and status surfaces.
 
-### Dynamic SVG Badges
+### Actionable Analytics Workspace
 
-Generate production-ready badges with configurable labels, colors, and styles.
-
-Typical use cases:
-
-- Downloads
-- Version visibility
-- Project status
-- Adoption signals
-- Custom KPIs
-
-### Developer Analytics Dashboard
-
-View project traffic and usage signals from a focused SPA dashboard.
-
-Current dashboard coverage includes:
+See what is actually happening behind every badge and counter through a focused SPA dashboard covering:
 
 - Page views
 - Unique visitors
-- Referrers
+- Referrers and visited pages
 - Countries
 - Devices
 - Browsers
 - Recent visitor details
 
-### Project Workspace
+### GitHub-Friendly Attribution
 
-Manage multiple projects from one interface and generate embed code for counters and badges with live preview.
+GitHub often hides the original referring page behind its image proxy. SVGStat supports `page_id` so you can still attribute README and Markdown embeds to the correct page and keep your dashboard useful.
+
+### Shared Free Badge Node
+
+SVGStat also includes a shared no-signup badge node for quick public usage. Each `page_id` gets an independent counter, which makes it ideal for lightweight GitHub visitor badges.
 
 ## Live Demo
 
 - Product site: [https://svgstat.com](https://svgstat.com)
-- Demo project name: `demo`
-- Counter endpoint: `https://svgstat.com/svg/demo/counter/visits.svg?label=Visits&color=7c3aed`
-- Badge endpoint: `https://svgstat.com/svg/demo/badge/downloads.svg?label=Downloads&color=0ea5e9&style=flat-square`
+- Shared free badge: `https://svgstat.com/svg/free/badge/visitor.svg?label=visitors&page_id=github.com/svgstat/demo`
+- Demo project slug: `demo`
+- Counter endpoint: `https://svgstat.com/svg/demo/counter/visits.svg?label=Visits&color=7c3aed&page_id=github.com/svgstat/demo`
+- Badge endpoint: `https://svgstat.com/svg/demo/badge/downloads.svg?label=Downloads&color=0ea5e9&style=flat&page_id=github.com/svgstat/demo`
 - Markdown embed:
 
 ```markdown
-![Visits](https://svgstat.com/svg/demo/counter/visits.svg?label=Visits&color=7c3aed)
+![Visits](https://svgstat.com/svg/demo/counter/visits.svg?label=Visits&color=7c3aed&page_id=github.com/svgstat/demo)
 ```
+![Visits](https://svgstat.com/svg/demo/counter/visits.svg?label=Visits&color=7c3aed&page_id=github.com/svgstat/demo)
 
 ## Quick Start
 
@@ -135,13 +129,13 @@ go run scripts/init_test_data.go
 ### Counter SVG
 
 ```text
-GET /svg/{projectSlug}/counter/{name}.svg
+GET https://svgstat.com/svg/{projectSlug}/counter/{name}.svg
 ```
 
 Example:
 
 ```text
-http://localhost:8080/svg/demo/counter/visits.svg?label=Visits&color=brightgreen
+https://svgstat.com/svg/demo/counter/visits.svg?label=Visits&color=brightgreen
 ```
 
 ### Badge SVG
@@ -153,7 +147,7 @@ GET /svg/{projectSlug}/badge/{name}.svg
 Example:
 
 ```text
-http://localhost:8080/svg/demo/badge/downloads.svg?label=Downloads&style=flat-square
+https://svgstat.com/svg/demo/badge/downloads.svg?label=Downloads&style=flat-square
 ```
 
 ### Project Statistics

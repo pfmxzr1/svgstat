@@ -1,18 +1,18 @@
 # SVGStat
 
-> 让数据统计像插入一张图片一样简单。
+> 把每一次访问，变成看得见的增长信号。
 
 [English](./README.md)
 
-SVGStat 是一个面向开发者的 SVG 数据统计平台，基于 Go 构建。
+SVGStat 是一个基于 Go 构建、面向开发者展示场景的 SVG 数据统计平台。它不是为传统网站后台而生，而是为 GitHub README、文档站、官网落地页、变更日志和内部工作台这些高曝光位置而设计。
 
-它通过纯 SVG 地址输出实时计数器、动态徽章与可操作的流量分析能力，让你的 GitHub README、文档站、官网落地页和内部控制台都能展示真实活跃度，而且不需要注入 JavaScript。
+你不需要接入前端埋点脚本，不需要维护截图，也不需要额外做组件封装。SVGStat 直接把访问量、下载量和自定义指标变成可嵌入的实时 SVG 地址，让你的项目在任何支持图片的地方都能持续展示真实活跃度、增长感和可信度。
 
 ## 为什么选择 SVGStat
 
-大多数统计工具是为传统网站设计的。
+大多数统计工具关注的是“站点后台”。
 
-SVGStat 则是为开发者展示项目成果的场景设计的：
+SVGStat 关注的是“项目展示面”：
 
 - GitHub README
 - Markdown 文档
@@ -21,63 +21,58 @@ SVGStat 则是为开发者展示项目成果的场景设计的：
 - 开源项目主页
 - 内部工程工作台
 
-SVGStat 不依赖脚本埋点在前端页面做复杂渲染，而是把统计能力直接变成可嵌入的 SVG 图片地址。这意味着它更轻量、更易缓存、更容易分发，也更适合任何支持 `<img>` 或 Markdown 图片语法的环境。
+它把展示能力和分析能力放进同一条工作流里：
+
+- 用 SVG 地址发布实时计数器
+- 生成更适合公开展示的高质量徽章
+- 在 GitHub 隐藏来源页时，通过 `page_id` 做页面归因
+- 查看 PV、UV、来源页、国家地区、设备、浏览器和最近访客
+- 在一个多项目工作区里实时预览并复制可直接上线的嵌入代码
 
 ## 你能获得什么
 
 ### 实时 SVG 计数器
 
-将实时指标直接发布为 SVG 计数器。
+把访问量、下载量、Star、关注数和自定义指标直接发布成轻量 SVG 计数器，适合任何支持 Markdown 图片语法或 `<img>` 标签的环境。
 
-常见用途包括：
+### 更适合公开展示的 SVG 徽章
 
-- 访问量
-- 下载量
-- Star 数
-- 关注数
-- 自定义项目指标
+生成可直接投入生产使用的徽章，支持文案、颜色、样式和首页跳转链接，适合 README、官网、产品文档和公开状态展示位。
 
-### 动态 SVG 徽章
+### 真正可用的分析工作区
 
-生成可直接投入生产使用的徽章，并支持标签、颜色、样式等参数配置。
-
-常见用途包括：
-
-- 下载量展示
-- 版本可视化
-- 项目状态展示
-- 增长信号展示
-- 自定义 KPI
-
-### 面向开发者的统计面板
-
-通过一个聚焦、轻量的 SPA 控制台查看项目真实访问情况。
-
-当前面板已覆盖：
+在一个聚焦的 SPA 控制台里看到每个徽章和计数器背后的真实数据，目前已经覆盖：
 
 - 页面访问量
 - 独立访客
-- 来源 Referrer
+- 来源页与访问页面
 - 国家地区
 - 设备类型
 - 浏览器分布
 - 最近访客明细
 
-### 多项目工作区
+### 面向 GitHub 的页面归因
 
-在同一界面中管理多个项目，并带有实时预览地生成计数器和徽章嵌入代码。
+GitHub 的图片代理经常会隐藏原始来源页。SVGStat 已支持 `page_id`，即使徽章嵌入在 README 或其他 Markdown 页面里，你也依然可以把访问归因到正确页面，而不是只看到一团模糊流量。
+
+### 免费公共徽章节点
+
+SVGStat 还内置了一个无需注册即可使用的公共徽章节点。每个 `page_id` 都会独立计数，非常适合快速生成 GitHub 访客徽章。
 
 ## 实际演示
 
 - 产品站点：[https://svgstat.com](https://svgstat.com)
-- 演示项目名称：`demo`
-- 计数器地址：`https://svgstat.com/svg/demo/counter/visits.svg?label=Visits&color=7c3aed`
-- 徽章地址：`https://svgstat.com/svg/demo/badge/downloads.svg?label=Downloads&color=0ea5e9&style=flat-square`
+- 免费公共徽章：`https://svgstat.com/svg/free/badge/visitor.svg?label=visitors&page_id=github.com/svgstat/demo`
+- 演示项目标识：`demo`
+- 计数器地址：`https://svgstat.com/svg/demo/counter/visits.svg?label=Visits&color=7c3aed&page_id=github.com/svgstat/demo`
+- 徽章地址：`https://svgstat.com/svg/demo/badge/downloads.svg?label=Downloads&color=0ea5e9&style=flat&page_id=github.com/svgstat/demo`
 - Markdown 嵌入：
 
 ```markdown
-![Visits](https://svgstat.com/svg/demo/counter/visits.svg?label=Visits&color=7c3aed)
+![Visits](https://svgstat.com/svg/demo/counter/visits.svg?label=Visits&color=7c3aed&page_id=github.com/svgstat/demo)
 ```
+
+![Visits](https://svgstat.com/svg/demo/counter/visits.svg?label=Visits&color=7c3aed&page_id=github.com/svgstat/demo)
 
 ## 快速开始
 
@@ -141,7 +136,7 @@ GET /svg/{projectSlug}/counter/{name}.svg
 示例：
 
 ```text
-http://localhost:8080/svg/demo/counter/visits.svg?label=Visits&color=brightgreen
+https://svgstat.com/svg/demo/counter/visits.svg?label=Visits&color=brightgreen
 ```
 
 ### 徽章 SVG
@@ -153,7 +148,7 @@ GET /svg/{projectSlug}/badge/{name}.svg
 示例：
 
 ```text
-http://localhost:8080/svg/demo/badge/downloads.svg?label=Downloads&style=flat-square
+https://svgstat.com/svg/demo/badge/downloads.svg?label=Downloads&style=flat-square
 ```
 
 ### 项目统计

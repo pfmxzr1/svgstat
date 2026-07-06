@@ -340,6 +340,21 @@ func (a *App) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"status":"ok"}`))
 }
 
+// freeProjectSlug is the shared no-signup project seeded by migrations.
+// Unlike named projects, it keys counts by page_id so every embedding page
+// gets its own independent counter (visitor-badge semantics).
+const freeProjectSlug = "free"
+
+func resolveCounterName(r *http.Request, projSlug, name string) string {
+	if projSlug != freeProjectSlug {
+		return name
+	}
+	if pageID := strings.TrimSpace(r.URL.Query().Get("page_id")); pageID != "" {
+		return name + "@" + pageID
+	}
+	return name
+}
+
 // setNoCacheHeaders defeats intermediary caches, in particular GitHub's Camo
 // image proxy (fronted by a CDN that keys off max-age/s-maxage and a past
 // Expires rather than no-cache/no-store alone).
@@ -370,7 +385,7 @@ func (a *App) handleCounterSVG(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	value, err := a.counter.IncrementWithAnalytics(r.Context(), proj.ID, name)
+	value, err := a.counter.IncrementWithAnalytics(r.Context(), proj.ID, resolveCounterName(r, proj.Slug, name))
 	if err != nil {
 		log.Error().Err(err).Str("project_id", proj.ID).Str("counter", name).Msg("Failed to increment counter")
 		value = 0
@@ -421,7 +436,7 @@ func (a *App) handleBadgeSVG(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	value, err := a.counter.Increment(r.Context(), proj.ID, name)
+	value, err := a.counter.Increment(r.Context(), proj.ID, resolveCounterName(r, proj.Slug, name))
 	if err != nil {
 		log.Error().Err(err).Str("project_id", proj.ID).Str("counter", name).Msg("Failed to increment counter")
 		value = 0

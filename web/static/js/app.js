@@ -43,7 +43,7 @@ function createDefaultVisitorFilters() {
 // Define the Alpine component
 function spaApp() {
     return {
-        lang: localStorage.getItem('svgstat-lang') || 'en',
+        lang: localStorage.getItem('svgstat-lang') || ((navigator.language || 'en').toLowerCase().startsWith('en') ? 'en' : 'zh'),
         user: null,
         currentPage: 'home',
         projects: [],
@@ -60,6 +60,8 @@ function spaApp() {
         visitorFilters: createDefaultVisitorFilters(),
         loadingStats: false,
         loadingVisitors: false,
+        freePageId: '',
+        toast: { show: false, message: '', type: 'success', timer: null },
         codeSettings: {
             counterName: 'visits',
             counterLabel: 'Visits',
@@ -312,11 +314,11 @@ function spaApp() {
                     this.newProject = { name: '', slug: '', description: '' };
                     await this.loadProjects();
                 } else {
-                    alert(data.error || this.t('errorCreate'));
+                    this.showToast(data.error || this.t('errorCreate'), 'error');
                 }
             } catch (e) {
                 console.error(e);
-                alert(this.t('errorGeneric'));
+                this.showToast(this.t('errorGeneric'), 'error');
             } finally {
                 this.creating = false;
             }
@@ -352,7 +354,8 @@ function spaApp() {
                 badgeLabel: this.lang === 'zh' ? '下载量' : 'Downloads',
                 badgeColor: '',
                 badgeStyle: '',
-                homepageUrl: ''
+                homepageUrl: '',
+                pageId: ''
             };
         },
 
@@ -386,7 +389,8 @@ function spaApp() {
             const query = this.getQueryString({
                 label: this.codeSettings.counterLabel,
                 color: this.codeSettings.counterColor,
-                homepage: this.getHomepageLink()
+                homepage: this.getHomepageLink(),
+                page_id: this.codeSettings.pageId
             });
             return `/svg/${project.slug}/counter/${name}.svg${query}`;
         },
@@ -398,7 +402,8 @@ function spaApp() {
                 label: this.codeSettings.badgeLabel,
                 color: this.codeSettings.badgeColor,
                 style: this.codeSettings.badgeStyle,
-                homepage: this.getHomepageLink()
+                homepage: this.getHomepageLink(),
+                page_id: this.codeSettings.pageId
             });
             return `/svg/${project.slug}/badge/${name}.svg${query}`;
         },
@@ -459,7 +464,7 @@ function spaApp() {
             const path = `/svg/demo/badge/downloads.svg${this.getQueryString({
                 label: this.lang === 'zh' ? '下载量' : 'Downloads',
                 color: '0ea5e9',
-                style: 'flat-square'
+                style: 'flat'
             })}`;
             return this.getAbsoluteUrl(path);
         },
@@ -469,9 +474,38 @@ function spaApp() {
             return `![${label}](${this.getDemoCounterUrl()})`;
         },
 
+        getFreeBadgePath() {
+            return `/svg/free/badge/visitor.svg${this.getQueryString({
+                label: this.lang === 'zh' ? '访客' : 'visitors',
+                page_id: this.freePageId
+            })}`;
+        },
+
+        getFreeBadgeUrl() {
+            return this.getAbsoluteUrl(this.getFreeBadgePath());
+        },
+
+        getFreeMarkdown() {
+            return `![visitors](${this.getFreeBadgeUrl()})`;
+        },
+
+        getFreeHtml() {
+            return `<img src="${this.getFreeBadgeUrl()}" alt="visitors">`;
+        },
+
+        showToast(message, type = 'success') {
+            clearTimeout(this.toast.timer);
+            this.toast.message = message;
+            this.toast.type = type;
+            this.toast.show = true;
+            this.toast.timer = setTimeout(() => {
+                this.toast.show = false;
+            }, 2200);
+        },
+
         copyText(text) {
             navigator.clipboard.writeText(text).then(() => {
-                alert(this.t('copied'));
+                this.showToast(this.t('copied'));
             });
         },
 
@@ -490,6 +524,12 @@ function spaApp() {
         shortVisitorId(visitorId) {
             if (!visitorId) return '-';
             return visitorId.length > 12 ? `${visitorId.slice(0, 12)}...` : visitorId;
+        },
+
+        formatBadgePath(path) {
+            if (!path) return '-';
+            const match = path.match(/^\/svg\/[^/]+\/(counter|badge)\/(.+)\.svg$/);
+            return match ? `${match[1]}/${match[2]}` : path;
         },
 
         formatDateTime(value) {
