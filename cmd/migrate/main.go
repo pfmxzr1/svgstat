@@ -14,7 +14,7 @@ import (
 	"github.com/svgstat/svgstat/internal/database"
 	"github.com/svgstat/svgstat/internal/migrate"
 )
-
+//启动过程中 各种函数逻辑验证 环境变量验证 数据库连接 命令行验证
 func main() {
 	_ = godotenv.Load()
 	setupLogger()
