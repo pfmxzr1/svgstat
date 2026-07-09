@@ -36,6 +36,7 @@ function createDefaultVisitorFilters() {
         browser: '',
         path: '',
         sort: 'last_seen_desc',
+        referrer: '',
         pageSize: 20
     };
 }
@@ -558,6 +559,7 @@ function spaApp() {
             if (this.visitorFilters.browser) params.set('browser', this.visitorFilters.browser);
             if (this.visitorFilters.path) params.set('path', this.visitorFilters.path);
             if (this.visitorFilters.sort) params.set('sort', this.visitorFilters.sort);
+            if (this.visitorFilters.referrer) params.set('referrer', this.visitorFilters.referrer);
             return params.toString();
         },
 
@@ -593,7 +595,7 @@ function spaApp() {
                 page,
                 pageSize
             };
-
+// 加载访问记录
             try {
                 const res = await fetch(`/api/v1/projects/${projectId}/visitors?${queryString}`, { credentials: 'same-origin' });
                 const data = await res.json();
@@ -602,7 +604,7 @@ function spaApp() {
                         ...createEmptyVisitorPage(),
                         ...data.data
                     };
-                }
+                } 
             } catch (e) {
                 this.lastLoadedVisitorsRequestKey = '';
                 console.error('Failed to load visitors', e);

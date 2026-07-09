@@ -550,6 +550,7 @@ func (a *App) handleGetProjectVisitors(w http.ResponseWriter, r *http.Request) {
 		Device:   r.URL.Query().Get("device"),
 		Browser:  r.URL.Query().Get("browser"),
 		Path:     r.URL.Query().Get("path"),
+		Referrer: r.URL.Query().Get("referrer"),
 		Sort:     r.URL.Query().Get("sort"),
 	})
 	if err != nil {

@@ -87,6 +87,7 @@ type VisitorQuery struct {
 	Device   string
 	Browser  string
 	Path     string
+	Referrer string
 	Sort     string
 }
 
@@ -482,8 +483,9 @@ func filterVisitorDetails(details []VisitorDetail, query VisitorQuery) []Visitor
 	device := strings.TrimSpace(strings.ToLower(query.Device))
 	browser := strings.TrimSpace(strings.ToLower(query.Browser))
 	path := strings.TrimSpace(strings.ToLower(query.Path))
-
-	if device == "" && browser == "" && path == "" {
+	referrer := strings.TrimSpace(strings.ToLower(query.Referrer))
+	
+	if device == "" && browser == "" && path == "" && referrer == "" {
 		return details
 	}
 
@@ -496,6 +498,9 @@ func filterVisitorDetails(details []VisitorDetail, query VisitorQuery) []Visitor
 			continue
 		}
 		if path != "" && !strings.Contains(strings.ToLower(detail.Path), path) {
+			continue
+		}
+		if referrer != "" && !strings.Contains(strings.ToLower(detail.Referrer), referrer) {
 			continue
 		}
 		filtered = append(filtered, detail)
