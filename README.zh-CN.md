@@ -97,7 +97,6 @@ cp .env.example .env
 ```bash
 make up
 ```
-
 ### 3. 执行数据库迁移
 
 ```bash

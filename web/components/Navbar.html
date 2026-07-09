@@ -26,14 +26,44 @@
                     >中文</button>
                 </div>
                 <template x-if="user">
-                    <div class="flex items-center space-x-4">
-                        <span class="text-gray-600" x-text="user.name"></span>
-                        <a href="#" @click.prevent="navigate('/dashboard')" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors" x-text="t('dashboard')"></a>
-                        <button @click="logout()" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors" x-text="t('logout')"></button>
+                    <div class="relative" x-data="{ open: false }">
+                        <button
+                            @click="open = !open"
+                            class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                            <span x-text="user.name"></span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                        <div
+                            x-show="open"
+                            @click.away="open = false"
+                            x-transition:enter="transition ease-out duration-150"
+                            x-transition:enter-start="opacity-0 translate-y-1"
+                            x-transition:enter-end="opacity-100 translate-y-0"
+                            x-transition:leave="transition ease-in duration-100"
+                            x-transition:leave-start="opacity-100 translate-y-0"
+                            x-transition:leave-end="opacity-0 translate-y-1"
+                            class="absolute right-0 z-10 mt-2 w-44 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg"
+                            style="display: none;"
+                        >
+                            <a
+                                href="#"
+                                @click.prevent="navigate('/dashboard'); open = false"
+                                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                x-text="t('dashboard')"
+                            ></a>
+                            <button
+                                @click="logout(); open = false"
+                                class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                x-text="t('logout')"
+                            ></button>
+                        </div>
                     </div>
                 </template>
                 <template x-if="!user">
-                    <div class="flex items-center space-x-4">
+                    <div class=" space-x-4">
                         <a href="#" @click.prevent="navigate('/login')" class="text-gray-600 hover:text-gray-900" x-text="t('login')"></a>
                         <a href="#" @click.prevent="navigate('/register')" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors" x-text="t('getStarted')"></a>
                     </div>
