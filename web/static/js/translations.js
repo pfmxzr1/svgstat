@@ -148,7 +148,7 @@ const translations = {
         pageSize: 'Per Page',
         resetFilters: 'Reset',
         applyFilters: 'Apply',
-        pathPlaceholder: 'Filter by badge path'
+        pathPlaceholder: 'Filter by visitor page',
     },
     zh: {
         dashboard: '控制台',
@@ -299,6 +299,6 @@ const translations = {
         pageSize: '每页条数',
         resetFilters: '重置',
         applyFilters: '应用',
-        pathPlaceholder: '按徽章路径筛选'
+        pathPlaceholder: '按访问页面筛选',
     }
 };
